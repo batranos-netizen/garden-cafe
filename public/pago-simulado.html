@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pago de prueba</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>body{background:#eef6fb}.hero{background:#009ee3}</style>
+</head>
+<body>
+  <header class="hero"><div class="contenedor"><h1>Pago de prueba</h1><p>El sistema está en MODO PRUEBA: no se cobra dinero real.</p></div></header>
+  <main class="contenedor">
+    <div class="tarjeta centro">
+      <p>Total a pagar</p>
+      <div class="numero" id="total">…</div>
+      <p style="color:#6b7069">En producción, acá se abre el checkout oficial de Mercado Pago.</p>
+      <p><button class="btn-mp" id="aprobar">Simular pago APROBADO</button></p>
+      <p><button class="btn-sec" id="rechazar">Simular pago rechazado</button></p>
+    </div>
+  </main>
+<script>
+const id = new URLSearchParams(location.search).get('pedido');
+fetch('/api/pedidos/' + id).then((r) => r.json()).then((p) => { document.getElementById('total').textContent = '$' + p.total.toLocaleString('es-AR'); });
+async function pagar(resultado) {
+  await fetch('/api/simular-pago/' + id, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ resultado }) });
+  location.href = '/estado?pedido=' + id;
+}
+document.getElementById('aprobar').onclick = () => pagar('aprobado');
+document.getElementById('rechazar').onclick = () => pagar('rechazado');
+</script>
+</body>
+</html>

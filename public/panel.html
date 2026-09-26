@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f3a2c">
+  <title>Garden Café · Panel de pedidos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { background: #eef0ea; }
+    .top { background: var(--verde); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; position: sticky; top: 0; z-index: 3; }
+    .top h1 { margin: 0; font-size: 22px; }
+    .kpi { background: rgba(255,255,255,.12); border-radius: 10px; padding: 6px 12px; font-size: 13px; }
+    .kpi b { font-size: 16px; display: block; }
+    .top .der { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .top a, .top label { color: #fff; font-size: 14px; }
+    .top a { background: rgba(255,255,255,.14); padding: 8px 12px; border-radius: 10px; text-decoration: none; }
+    .conexion { width: 10px; height: 10px; border-radius: 50%; background: #e0a800; display: inline-block; }
+    .conexion.on { background: #5bd48a; }
+    .tablero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 14px; }
+    @media (max-width: 900px) { .tablero { grid-template-columns: 1fr; } }
+    .col h2 { font-size: 18px; margin: 4px 4px 10px; display: flex; justify-content: space-between; }
+    .col h2 span { font-family: Inter, sans-serif; font-size: 14px; background: #fff; border-radius: 999px; padding: 2px 10px; }
+    .ped { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); border-left: 6px solid var(--hoja); }
+    .ped.takeaway { border-left-color: var(--acento); }
+    .ped.nuevo { animation: destello 1s ease 3; }
+    .ped.alerta { border-left-color: #b3261e; background: #fff4f2; }
+    @keyframes destello { 50% { box-shadow: 0 0 0 4px #ffd166; } }
+    .ped .cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .ped .num { font-family: Fraunces, serif; font-size: 28px; color: var(--verde); }
+    .ped .dest { font-weight: 700; font-size: 17px; }
+    .ped .quien { color: var(--gris); font-size: 14px; margin: 2px 0 8px; }
+    .ped ul { margin: 0; padding-left: 0; list-style: none; font-size: 16px; }
+    .ped li { padding: 3px 0; }
+    .ped li b { display: inline-block; min-width: 28px; }
+    .ped .nota { background: #fff7d6; border-radius: 8px; padding: 6px 10px; margin-top: 8px; font-size: 14px; }
+    .ped .pie { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; }
+    .ped .tiempo { font-size: 13px; color: var(--gris); }
+    .ped .acc { display: flex; gap: 6px; }
+    .ped button { border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 600; background: var(--verde); color: #fff; }
+    .ped button.sec { background: #e9e4d7; color: var(--verde); }
+    .vacio { color: var(--gris); text-align: center; padding: 20px; font-size: 14px; }
+    .login { max-width: 360px; margin: 12vh auto; padding: 0 16px; }
+    .login input { width: 100%; padding: 14px; border-radius: 12px; border: 1.5px solid var(--linea); font-size: 16px; margin: 10px 0; }
+    #ticket-frame { position: absolute; width: 0; height: 0; border: 0; }
+  </style>
+</head>
+<body>
+  <div id="vista-login" class="login" hidden>
+    <div class="tarjeta">
+      <h2 style="margin-top:0">Panel de pedidos</h2>
+      <p>Ingresá la contraseña del local.</p>
+      <form id="form-login">
+        <input type="password" id="pass" placeholder="Contraseña" autocomplete="current-password">
+        <button class="btn-principal" style="justify-content:center">Entrar</button>
+        <p class="error" id="err-login"></p>
+      </form>
+    </div>
+  </div>
+
+  <div id="vista-panel" hidden>
+    <div class="top">
+      <h1>Garden Café</h1>
+      <span class="conexion" id="conexion" title="Conexión en vivo"></span>
+      <div class="kpi"><b id="k-ped">0</b>pedidos hoy</div>
+      <div class="kpi"><b id="k-total">$0</b>cobrado hoy</div>
+      <div class="kpi"><b id="k-mix">0 / 0</b>mesa / take away</div>
+      <div class="der">
+        <label><input type="checkbox" id="auto-print"> Imprimir comanda automáticamente</label>
+        <a href="#" id="btn-sonido">🔔 Probar sonido</a>
+        <a href="/qr">🔳 QR de mesas</a>
+      </div>
+    </div>
+    <div class="tablero">
+      <div class="col"><h2>🆕 Nuevos <span id="c-nuevos">0</span></h2><div id="l-nuevos"></div></div>
+      <div class="col"><h2>👩‍🍳 En preparación <span id="c-prep">0</span></h2><div id="l-prep"></div></div>
+      <div class="col"><h2>✅ Listos <span id="c-listos">0</span></h2><div id="l-listos"></div></div>
+    </div>
+  </div>
+  <iframe id="ticket-frame" title="ticket"></iframe>
+
+<script>
+const fmt = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+const esc = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+const pedidos = new Map();
+const recienLlegados = new Set();
+const autoPrint = document.getElementById('auto-print');
+try { autoPrint.checked = localStorage.getItem('gc_autoprint') === '1'; } catch {}
+autoPrint.onchange = () => { try { localStorage.setItem('gc_autoprint', autoPrint.checked ? '1' : '0'); } catch {} };
+
+// ---------- Sonido ----------
+let audio;
+function sonar() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25, 0.5].forEach((t, i) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = i === 2 ? 1175 : 880;
+      g.gain.setValueAtTime(0.0001, audio.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.4, audio.currentTime + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + t + 0.22);
+      o.connect(g).connect(audio.destination);
+      o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.25);
+    });
+  } catch {}
+}
+document.getElementById('btn-sonido').onclick = (e) => { e.preventDefault(); sonar(); };
+
+// ---------- Login ----------
+async function iniciar() {
+  const s = await fetch('/api/panel/sesion').then((r) => r.json());
+  if (!s.ok) { document.getElementById('vista-login').hidden = false; return; }
+  document.getElementById('vista-panel').hidden = false;
+  await cargar();
+  conectar();
+  resumen();
+  setInterval(resumen, 30000);
+  setInterval(render, 30000); // refresca "hace X min"
+}
+document.getElementById('form-login').onsubmit = async (e) => {
+  e.preventDefault();
+  sonar(); // habilita el audio con la interacción del usuario
+  const r = await fetch('/api/panel/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: document.getElementById('pass').value }) });
+  if (!r.ok) { document.getElementById('err-login').textContent = 'Contraseña incorrecta'; return; }
+  document.getElementById('vista-login').hidden = true;
+  iniciar();
+};
+
+async function cargar() {
+  const lista = await fetch('/api/panel/pedidos').then((r) => r.json());
+  lista.forEach((p) => pedidos.set(p.id, p));
+  render();
+}
+async function resumen() {
+  const r = await fetch('/api/panel/resumen').then((r) => r.json()).catch(() => null);
+  if (!r) return;
+  document.getElementById('k-ped').textContent = r.pedidos;
+  document.getElementById('k-total').textContent = fmt(r.total);
+  document.getElementById('k-mix').textContent = `${r.mesa} / ${r.takeaway}`;
+}
+
+// ---------- Tiempo real ----------
+function conectar() {
+  const es = new EventSource('/api/panel/stream');
+  const luz = document.getElementById('conexion');
+  es.onopen = () => { luz.classList.add('on'); cargar(); };
+  es.onerror = () => luz.classList.remove('on');
+  es.addEventListener('pedido', (ev) => {
+    const p = JSON.parse(ev.data);
+    const antes = pedidos.get(p.id);
+    pedidos.set(p.id, p);
+    if (!antes && (p.estado === 'pagado' || p.estado === 'revisar_pago')) {
+      recienLlegados.add(p.id);
+      sonar();
+      if (p.estado === 'pagado' && autoPrint.checked) imprimir(p.id);
+      setTimeout(() => recienLlegados.delete(p.id), 4000);
+      resumen();
+    }
+    render();
+  });
+}
+
+// ---------- Render ----------
+function hace(iso) {
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  return m < 1 ? 'recién' : `hace ${m} min`;
+}
+function tarjeta(p) {
+  const ta = p.modo === 'takeaway';
+  const alerta = p.estado === 'revisar_pago';
+  const acciones = {
+    pagado: `<button class="sec" data-print>🖨️</button><button data-e="en_preparacion">Preparar</button>`,
+    en_preparacion: `<button class="sec" data-print>🖨️</button><button data-e="listo">Listo ✓</button>`,
+    listo: `<button data-e="entregado">${ta ? 'Retirado' : 'Entregado'}</button>`,
+    revisar_pago: `<button data-e="en_preparacion" title="Solo si verificaste el pago ${esc(p.pago_id)} en tu cuenta de Mercado Pago">Lo verifiqué, preparar</button>`,
+  }[p.estado] || '';
+  return `<div class="ped ${ta ? 'takeaway' : ''} ${alerta ? 'alerta' : ''} ${recienLlegados.has(p.id) ? 'nuevo' : ''}" data-id="${p.id}">
+    <div class="cab"><span class="dest">${ta ? '🛍️ TAKE AWAY' : '🍽️ MESA ' + p.mesa}</span><span class="num">${p.numero ? '#' + String(p.numero).padStart(3, '0') : '⚠️'}</span></div>
+    <div class="quien">${esc(p.nombre)}${ta ? ` · 📱 ${esc(p.telefono)} · ⏰ ${esc(p.hora_retiro)}` : ''}${alerta ? ` · ⚠️ El monto pagado no coincide: revisá el pago ${esc(p.pago_id)} en Mercado Pago` : ''}</div>
+    <ul>${p.items.map((l) => `<li><b>${l.qty}×</b> ${esc(l.nombre)}</li>`).join('')}</ul>
+    ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
+    <div class="pie"><span class="tiempo">${hace(p.pagado || p.creado)} · ${fmt(p.total)}</span><span class="acc">${acciones}</span></div>
+  </div>`;
+}
+function render() {
+  const todos = [...pedidos.values()];
+  const grupos = {
+    nuevos: todos.filter((p) => p.estado === 'pagado' || p.estado === 'revisar_pago'),
+    prep: todos.filter((p) => p.estado === 'en_preparacion'),
+    listos: todos.filter((p) => p.estado === 'listo'),
+  };
+  for (const [k, lista] of Object.entries(grupos)) {
+    document.getElementById('l-' + k).innerHTML = lista.length ? lista.map(tarjeta).join('') : '<div class="vacio">Sin pedidos</div>';
+    document.getElementById('c-' + k).textContent = lista.length;
+  }
+}
+document.body.addEventListener('click', async (e) => {
+  const card = e.target.closest('.ped');
+  if (!card) return;
+  const id = card.dataset.id;
+  if (e.target.matches('[data-print]')) return imprimir(id);
+  const estado = e.target.dataset.e;
+  if (!estado) return;
+  e.target.disabled = true;
+  const r = await fetch(`/api/panel/pedidos/${id}/estado`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) });
+  if (r.ok) { pedidos.set(id, await r.json()); render(); } else e.target.disabled = false;
+});
+
+// ---------- Comanda (impresora térmica 80mm / 58mm) ----------
+function imprimir(id) {
+  const p = pedidos.get(id);
+  if (!p) return;
+  const ta = p.modo === 'takeaway';
+  const hora = new Date(p.pagado || p.creado).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+    @page { size: 80mm auto; margin: 3mm; }
+    body { font-family: 'Courier New', monospace; width: 72mm; margin: 0; font-size: 13px; color: #000; }
+    .c { text-align: center; } h1 { font-size: 18px; margin: 0; } .big { font-size: 26px; font-weight: bold; }
+    hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; } td { vertical-align: top; padding: 2px 0; }
+    .dest { font-size: 20px; font-weight: bold; border: 2px solid #000; padding: 4px; margin: 6px 0; }
+  </style></head><body>
+    <div class="c"><h1>GARDEN CAFÉ</h1>COMANDA · PAGADO MP</div><hr>
+    <div class="c big">#${String(p.numero).padStart(3, '0')}</div>
+    <div class="c dest">${ta ? 'TAKE AWAY' : 'MESA ' + p.mesa}</div>
+    <div>Cliente: ${esc(p.nombre)}</div>
+    ${ta ? `<div>Tel: ${esc(p.telefono)}</div><div>Retira: ${esc(p.hora_retiro)}</div>` : ''}
+    <div>Hora: ${hora}</div><hr>
+    <table style="width:100%">${p.items.map((l) => `<tr><td style="width:12mm"><b>${l.qty} x</b></td><td>${esc(l.nombre)}</td></tr>`).join('')}</table>
+    ${p.notas ? `<hr><b>NOTA:</b> ${esc(p.notas)}` : ''}
+    <hr><div>Total: ${fmt(p.total)}</div><div>Pago MP: ${esc(p.pago_id)}</div><br><br>
+  </body></html>`;
+  const f = document.getElementById('ticket-frame');
+  f.onload = () => { f.onload = null; f.contentWindow.focus(); f.contentWindow.print(); };
+  f.srcdoc = html;
+}
+
+iniciar();
+</script>
+</body>
+</html>

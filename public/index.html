@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f3a2c">
+  <title>Garden Café · Carta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="contenedor">
+      <h1 id="nombre-negocio">Garden Café</h1>
+      <p id="slogan"></p>
+      <div class="meta">
+        <span class="chip destacado" id="chip-modo" hidden></span>
+        <span class="chip" id="chip-horario"></span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs"><div class="contenedor" id="tabs"></div></nav>
+
+  <main class="contenedor" id="carta"><div class="spinner"></div></main>
+
+  <footer class="pie contenedor" id="pie"></footer>
+
+  <div class="barra" id="barra">
+    <button class="btn-principal" id="btn-carrito">
+      <span><span class="cuenta" id="cant-items">0</span>&nbsp; Hacer mi pedido</span>
+      <span id="total-barra">$0</span>
+    </button>
+  </div>
+
+  <!-- Bot de pedido -->
+  <div class="bot" id="bot" aria-hidden="true">
+    <div class="bot-head">
+      <div class="avatar">🌿</div>
+      <div><b>Garden Bot</b><small>Te ayudo con tu pedido</small></div>
+      <button class="cerrar" id="cerrar-bot">← Carta</button>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="opciones" id="opciones"></div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

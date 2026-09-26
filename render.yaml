@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: garden-cafe
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: "echo sin dependencias"
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    disk:
+      name: pedidos
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: BASE_URL
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: PANEL_PASSWORD
+        sync: false
+      - key: CANT_MESAS
+        value: "12"
+      - key: WHATSAPP_MODO
+        value: callmebot
+      - key: CALLMEBOT_TELEFONO
+        sync: false
+      - key: CALLMEBOT_APIKEY
+        sync: false

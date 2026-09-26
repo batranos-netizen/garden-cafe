@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f3a2c">
+  <title>Garden Café · Tu pedido</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="hero"><div class="contenedor"><h1>Garden Café</h1><p>Seguimiento de tu pedido</p></div></header>
+  <main class="contenedor">
+    <div class="tarjeta centro" id="tarjeta"><div class="spinner"></div><p>Verificando tu pago con Mercado Pago…</p></div>
+    <div class="tarjeta" id="detalle" hidden></div>
+    <p class="centro"><a class="btn-sec" href="/">Volver a la carta</a></p>
+  </main>
+<script>
+const fmt = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+const q = new URLSearchParams(location.search);
+let id = q.get('pedido') || q.get('external_reference');
+try { id = id || JSON.parse(localStorage.getItem('gc_ultimo_pedido')); } catch {}
+const paymentId = q.get('payment_id') || q.get('collection_id') || '';
+const esc = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+let ultimoEstado = null;
+
+async function consultar(primera) {
+  if (!id) return pintar({ estado: 'sin_pedido' });
+  try {
+    const r = primera
+      ? await fetch(`/api/pedidos/${id}/verificar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payment_id: paymentId }) })
+      : await fetch(`/api/pedidos/${id}`);
+    if (!r.ok) return pintar({ estado: 'sin_pedido' });
+    pintar(await r.json());
+  } catch {}
+}
+
+function pintar(p) {
+  const t = document.getElementById('tarjeta');
+  const det = document.getElementById('detalle');
+  if (p.estado === ultimoEstado) return;
+  ultimoEstado = p.estado;
+  const num = p.numero ? String(p.numero).padStart(3, '0') : '';
+  const takeaway = p.modo === 'takeaway';
+  const pasos = ['pagado', 'en_preparacion', 'listo', 'entregado'];
+  const idx = pasos.indexOf(p.estado);
+  const barra = `<div class="pasos">${['Pagado', 'Preparando', 'Listo', takeaway ? 'Retirado' : 'Servido'].map((n, i) => `<div class="paso ${i <= idx ? 'hecho' : ''}"><div class="punto"></div>${n}</div>`).join('')}</div>`;
+
+  const vistas = {
+    sin_pedido: `<div class="icono-grande">🤔</div><h2>No encontramos el pedido</h2><p>Si ya pagaste, mostrale el comprobante de Mercado Pago al personal.</p>`,
+    pendiente_pago: `<div class="spinner"></div><h2>Esperando confirmación del pago</h2><p>Si pagaste en efectivo (Rapipago/Pago Fácil) o el pago quedó "en proceso", te avisamos acá apenas se acredite. No cierres esta página.</p>`,
+    rechazado: `<div class="icono-grande">⚠️</div><h2>El pago no se completó</h2><p>No te cobramos nada. Podés intentar de nuevo con otro medio de pago.</p><p><a class="btn-sec" href="/">Intentar de nuevo</a></p>`,
+    revisar_pago: `<div class="icono-grande">🔎</div><h2>Estamos revisando tu pago</h2><p>Acercate al mostrador con tu comprobante, por favor.</p>`,
+    pagado: `<div class="icono-grande ok">✅</div><p>¡Pago confirmado! Tu pedido</p><div class="numero">#${num}</div><h2>ya está en cocina 👩‍🍳</h2>${barra}`,
+    en_preparacion: `<div class="icono-grande ok">👩‍🍳</div><p>Pedido</p><div class="numero">#${num}</div><h2>Lo estamos preparando</h2>${barra}`,
+    listo: `<div class="icono-grande ok">🎉</div><p>Pedido</p><div class="numero">#${num}</div><h2>${takeaway ? '¡Listo! Pasá a retirarlo por el mostrador' : '¡Listo! Ya va a tu mesa'}</h2>${barra}`,
+    entregado: `<div class="icono-grande ok">💚</div><div class="numero">#${num}</div><h2>¡Que lo disfrutes!</h2><p>Gracias por elegir Garden Café.</p>${barra}`,
+  };
+  t.innerHTML = vistas[p.estado] || vistas.pendiente_pago;
+  if (p.estado === 'listo' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+  if (p.items) {
+    det.hidden = false;
+    det.innerHTML = `<h3 style="margin-top:0">${takeaway ? '🛍️ Take away · ' + esc(p.hora_retiro) : '🍽️ Mesa ' + p.mesa} · ${esc(p.nombre)}</h3>
+      <div class="resumen">${p.items.map((l) => `<div class="linea"><span>${l.qty} × ${esc(l.nombre)}</span><span>${fmt(l.subtotal)}</span></div>`).join('')}
+      <div class="linea total"><span>Total</span><span>${fmt(p.total)}</span></div></div>
+      ${p.notas ? `<p>📝 ${esc(p.notas)}</p>` : ''}`;
+  }
+  if (['pagado', 'en_preparacion', 'listo', 'entregado'].includes(p.estado)) {
+    try { localStorage.removeItem('gc_carrito'); } catch {}
+  }
+}
+
+consultar(true);
+setInterval(() => { if (ultimoEstado !== 'entregado' && ultimoEstado !== 'rechazado') consultar(false); }, 4000);
+</script>
+</body>
+</html>

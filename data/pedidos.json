@@ -1,0 +1,47 @@
+{
+  "pedidos": {
+    "ccea56f8-deaa-4c94-b58d-69249520a931": {
+      "id": "ccea56f8-deaa-4c94-b58d-69249520a931",
+      "numero": 1,
+      "estado": "entregado",
+      "modo": "mesa",
+      "mesa": 1,
+      "nombre": "carla",
+      "telefono": "",
+      "hora_retiro": null,
+      "notas": "",
+      "items": [
+        {
+          "id": "promo-desayuno",
+          "nombre": "Desayuno Garden",
+          "precio": 8900,
+          "qty": 1,
+          "subtotal": 8900
+        },
+        {
+          "id": "promo-merienda",
+          "nombre": "Merienda para dos",
+          "precio": 16500,
+          "qty": 1,
+          "subtotal": 16500
+        },
+        {
+          "id": "promo-brunch",
+          "nombre": "Brunch Garden",
+          "precio": 14900,
+          "qty": 1,
+          "subtotal": 14900
+        }
+      ],
+      "total": 40300,
+      "creado": "2026-09-26T19:58:12.465Z",
+      "pagado": "2026-09-26T19:58:17.284Z",
+      "pago_id": "TEST-1790452697274"
+    }
+  },
+  "contador": {
+    "fecha": "2026-09-26",
+    "numero": 1
+  },
+  "pagosProcesados": {}
+}

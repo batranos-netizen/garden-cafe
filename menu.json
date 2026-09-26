@@ -1,0 +1,45 @@
+{
+  "negocio": {
+    "nombre": "Garden Café",
+    "slogan": "Café de especialidad · Pastelería · Brunch",
+    "direccion": "Merlo, Buenos Aires",
+    "horario": "Lun a Dom · 8:00 a 20:30",
+    "instagram": "gardencafe.merlo",
+    "takeaway_minutos": 15
+  },
+  "categorias": [
+    { "id": "promos", "nombre": "Promos", "icono": "🔥" },
+    { "id": "cafeteria", "nombre": "Cafetería", "icono": "☕" },
+    { "id": "frios", "nombre": "Bebidas frías", "icono": "🧊" },
+    { "id": "pasteleria", "nombre": "Pastelería", "icono": "🥐" },
+    { "id": "brunch", "nombre": "Brunch y salados", "icono": "🥑" }
+  ],
+  "productos": [
+    { "id": "promo-desayuno", "categoria": "promos", "nombre": "Desayuno Garden", "descripcion": "Café con leche mediano + 2 medialunas + jugo de naranja exprimido.", "precio": 8900, "precio_anterior": 11200, "etiqueta": "Hasta las 12 hs", "disponible": true },
+    { "id": "promo-merienda", "categoria": "promos", "nombre": "Merienda para dos", "descripcion": "2 cafés con leche + 1 porción de torta a elección + 4 medialunas.", "precio": 16500, "precio_anterior": 20400, "etiqueta": "Desde las 16 hs", "disponible": true },
+    { "id": "promo-brunch", "categoria": "promos", "nombre": "Brunch Garden", "descripcion": "Tostón de palta y huevo + flat white + limonada + mini muffin.", "precio": 14900, "precio_anterior": 18300, "etiqueta": "Sáb y Dom", "disponible": true },
+
+    { "id": "espresso", "categoria": "cafeteria", "nombre": "Espresso", "descripcion": "Doble shot de café de especialidad.", "precio": 3200, "disponible": true },
+    { "id": "cortado", "categoria": "cafeteria", "nombre": "Cortado", "descripcion": "Espresso con un toque de leche texturizada.", "precio": 3500, "disponible": true },
+    { "id": "cafe-con-leche", "categoria": "cafeteria", "nombre": "Café con leche", "descripcion": "Taza mediana. Leche entera, descremada o de almendras.", "precio": 4200, "disponible": true },
+    { "id": "flat-white", "categoria": "cafeteria", "nombre": "Flat white", "descripcion": "Doble espresso con leche sedosa.", "precio": 4600, "disponible": true },
+    { "id": "capuccino", "categoria": "cafeteria", "nombre": "Capuccino", "descripcion": "Con canela y cacao.", "precio": 4800, "disponible": true },
+    { "id": "submarino", "categoria": "cafeteria", "nombre": "Submarino", "descripcion": "Leche caliente con barra de chocolate semiamargo.", "precio": 5200, "disponible": true },
+
+    { "id": "limonada", "categoria": "frios", "nombre": "Limonada con menta y jengibre", "descripcion": "Jarra individual 500 ml.", "precio": 4900, "disponible": true },
+    { "id": "jugo-naranja", "categoria": "frios", "nombre": "Jugo de naranja exprimido", "descripcion": "Vaso 350 ml.", "precio": 4500, "disponible": true },
+    { "id": "iced-latte", "categoria": "frios", "nombre": "Iced latte", "descripcion": "Espresso, leche fría y hielo. Opción con caramelo.", "precio": 5300, "disponible": true },
+    { "id": "agua", "categoria": "frios", "nombre": "Agua mineral", "descripcion": "500 ml con o sin gas.", "precio": 2500, "disponible": true },
+
+    { "id": "medialunas", "categoria": "pasteleria", "nombre": "Medialunas x2", "descripcion": "De manteca, recién horneadas.", "precio": 2800, "disponible": true },
+    { "id": "alfajor-maicena", "categoria": "pasteleria", "nombre": "Alfajor de maicena", "descripcion": "Con dulce de leche y coco.", "precio": 2600, "disponible": true },
+    { "id": "carrot-cake", "categoria": "pasteleria", "nombre": "Carrot cake", "descripcion": "Porción con frosting de queso crema.", "precio": 6200, "disponible": true },
+    { "id": "cheesecake", "categoria": "pasteleria", "nombre": "Cheesecake de frutos rojos", "descripcion": "Porción.", "precio": 6800, "disponible": true },
+    { "id": "budin", "categoria": "pasteleria", "nombre": "Budín de limón y amapola", "descripcion": "Porción.", "precio": 3900, "disponible": false },
+
+    { "id": "toston-palta", "categoria": "brunch", "nombre": "Tostón de palta", "descripcion": "Pan de masa madre, palta, huevo poché y semillas.", "precio": 9400, "disponible": true },
+    { "id": "tostado", "categoria": "brunch", "nombre": "Tostado de jamón y queso", "descripcion": "En pan de miga o árabe.", "precio": 7200, "disponible": true },
+    { "id": "bowl-yogur", "categoria": "brunch", "nombre": "Bowl de yogur", "descripcion": "Yogur natural, granola casera, frutas de estación y miel.", "precio": 7800, "disponible": true },
+    { "id": "wrap-pollo", "categoria": "brunch", "nombre": "Wrap de pollo", "descripcion": "Pollo grillado, hojas verdes, tomate y aderezo de yogur.", "precio": 10500, "disponible": true }
+  ]
+}

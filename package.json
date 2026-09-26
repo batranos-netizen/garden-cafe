@@ -1,0 +1,8 @@
+{
+  "name": "garden-cafe-pedidos",
+  "version": "1.0.0",
+  "description": "Carta QR, bot de pedidos y cobro con Mercado Pago para Garden Café (Merlo)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}

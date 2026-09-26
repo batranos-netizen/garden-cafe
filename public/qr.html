@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Garden Café · QR de mesas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .barra-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 16px 0; }
+    .grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding-bottom: 40px; }
+    .qr-card { background: #fff; border: 2px solid var(--verde); border-radius: 18px; padding: 18px; text-align: center; break-inside: avoid; }
+    .qr-card .marca { font-family: Fraunces, serif; font-size: 24px; color: var(--verde); }
+    .qr-card .donde { display: inline-block; background: var(--verde); color: #fff; border-radius: 999px; padding: 4px 14px; font-weight: 700; margin: 6px 0 10px; }
+    .qr-card.ta .donde { background: var(--acento); }
+    .qr-card svg { width: 100%; max-width: 220px; height: auto; display: block; margin: 0 auto; }
+    .qr-card p { margin: 10px 0 0; font-size: 14px; color: var(--tinta); }
+    .qr-card small { display: block; color: var(--gris); font-size: 10px; margin-top: 6px; word-break: break-all; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; }
+      .grilla { grid-template-columns: repeat(2, 1fr); gap: 10mm; }
+      .qr-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="contenedor" style="max-width:1000px">
+    <div class="barra-top no-print">
+      <h1 style="margin:0">QR para imprimir</h1>
+      <button class="btn-sec" onclick="print()">🖨️ Imprimir</button>
+      <a class="btn-sec" href="/panel">← Volver al panel</a>
+    </div>
+    <p class="no-print" style="color:var(--gris)">Cada mesa tiene su propio QR: al escanearlo el pedido queda asignado a esa mesa. El QR de <b>Take away</b> es para la vidriera, el mostrador o tus redes.</p>
+    <div class="grilla" id="grilla"><div class="spinner"></div></div>
+  </main>
+  <script src="/qr-lib.js"></script>
+  <script>
+    fetch('/api/panel/qrs').then((r) => { if (r.status === 401) { location.href = '/panel'; throw 0; } return r.json(); }).then((lista) => {
+      document.getElementById('grilla').innerHTML = lista.map((q) => {
+        const ta = q.titulo === 'Take away';
+        return `<div class="qr-card ${ta ? 'ta' : ''}">
+          <div class="marca">Garden Café</div>
+          <div class="donde">${ta ? '🛍️ Take away' : '🍽️ ' + q.titulo}</div>
+          ${QR.toSVG(q.url, { color: '#1f3a2c' })}
+          <p><b>Escaneá, mirá la carta y pedí</b><br>Pagás con Mercado Pago desde tu celu</p>
+          <small>${q.url}</small>
+        </div>`;
+      }).join('');
+    });
+  </script>
+</body>
+</html>
