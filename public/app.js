@@ -299,39 +299,55 @@ async function flujo() {
   // Resumen final + pago
   const destino = pedido.modo === 'mesa' ? `🍽️ Mesa ${pedido.mesa}` : `🛍️ Take away · ${pedido.hora_retiro}`;
   await botDice(`Listo, <b>${escapar(pedido.nombre)}</b>. Este es tu pedido:<br><br>${destino}<br>${lineasCarrito().map((l) => `• ${l.qty} × ${l.p.nombre}`).join('<br>')}${pedido.notas ? `<br>📝 ${escapar(pedido.notas)}` : ''}<br><br><b>Total: ${fmt(total())}</b>`);
-  await botDice('Pagalo con Mercado Pago (tarjeta, débito, dinero en cuenta o QR). Apenas se confirme el pago, lo mandamos a cocina 👩‍🍳');
-  if (!vivo()) return;
-  mostrarBotonPago();
+  if (pedido.modo === 'mesa' && CONFIG.cobro_en_mesa !== false) {
+    await botDice('¿Cómo querés pagar?<br>💳 <b>Mercado Pago</b> ahora desde el celu, o<br>💵 <b>en la mesa</b> (efectivo o tarjeta con el mozo).');
+    if (!vivo()) return;
+    mostrarBotonPago(true);
+  } else {
+    await botDice('Pagalo con Mercado Pago (tarjeta, débito, dinero en cuenta o QR). Apenas se confirme el pago, lo mandamos a cocina 👩‍🍳');
+    if (!vivo()) return;
+    mostrarBotonPago(false);
+  }
 }
 
-function mostrarBotonPago() {
+function mostrarBotonPago(conMesa) {
   opciones.innerHTML = '';
-  const b = document.createElement('button');
-  b.className = 'btn-mp';
-  b.innerHTML = `Pagar ${fmt(total())} con Mercado Pago`;
   const err = document.createElement('div');
   err.className = 'error';
-  b.onclick = async () => {
-    b.disabled = true;
-    b.textContent = 'Generando pago seguro…';
+  const textoMP = `💳 Pagar ${fmt(total())} con Mercado Pago`;
+  const textoMesa = `💵 Pagar en la mesa (efectivo)`;
+  const b = document.createElement('button');
+  b.className = 'btn-mp';
+  b.textContent = textoMP;
+  const bm = document.createElement('button');
+  bm.className = 'btn-mesa';
+  bm.textContent = textoMesa;
+
+  async function enviar(metodo) {
+    b.disabled = true; bm.disabled = true;
+    (metodo === 'mesa' ? bm : b).textContent = metodo === 'mesa' ? 'Enviando a cocina…' : 'Generando pago seguro…';
     err.textContent = '';
     try {
       const r = await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...pedido, items: lineasCarrito().map((l) => ({ id: l.p.id, qty: l.qty })) }),
+        body: JSON.stringify({ ...pedido, metodo_pago: metodo, items: lineasCarrito().map((l) => ({ id: l.p.id, qty: l.qty })) }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Error');
       store.set('gc_ultimo_pedido', data.id);
+      if (metodo === 'mesa') { carrito = {}; store.set('gc_carrito', {}); }
       location.href = data.checkout_url;
     } catch (e) {
       err.textContent = e.message;
-      b.disabled = false;
-      b.innerHTML = `Pagar ${fmt(total())} con Mercado Pago`;
+      b.disabled = false; bm.disabled = false;
+      b.textContent = textoMP; bm.textContent = textoMesa;
     }
-  };
+  }
+  b.onclick = () => enviar('mp');
+  bm.onclick = () => enviar('mesa');
   opciones.appendChild(b);
+  if (conMesa) opciones.appendChild(bm);
   opciones.appendChild(err);
 }
 

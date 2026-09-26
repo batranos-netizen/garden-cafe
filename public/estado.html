@@ -44,14 +44,15 @@ function pintar(p) {
   const num = p.numero ? String(p.numero).padStart(3, '0') : '';
   const takeaway = p.modo === 'takeaway';
   const pasos = ['pagado', 'en_preparacion', 'listo', 'entregado'];
-  const idx = pasos.indexOf(p.estado);
-  const barra = `<div class="pasos">${['Pagado', 'Preparando', 'Listo', takeaway ? 'Retirado' : 'Servido'].map((n, i) => `<div class="paso ${i <= idx ? 'hecho' : ''}"><div class="punto"></div>${n}</div>`).join('')}</div>`;
+  const idx = pasos.indexOf(p.estado === 'a_cobrar' ? 'pagado' : p.estado);
+  const barra = `<div class="pasos">${[p.metodo_pago === 'mesa' ? 'Recibido' : 'Pagado', 'Preparando', 'Listo', takeaway ? 'Retirado' : 'Servido'].map((n, i) => `<div class="paso ${i <= idx ? 'hecho' : ''}"><div class="punto"></div>${n}</div>`).join('')}</div>`;
 
   const vistas = {
     sin_pedido: `<div class="icono-grande">🤔</div><h2>No encontramos el pedido</h2><p>Si ya pagaste, mostrale el comprobante de Mercado Pago al personal.</p>`,
     pendiente_pago: `<div class="spinner"></div><h2>Esperando confirmación del pago</h2><p>Si pagaste en efectivo (Rapipago/Pago Fácil) o el pago quedó "en proceso", te avisamos acá apenas se acredite. No cierres esta página.</p>`,
     rechazado: `<div class="icono-grande">⚠️</div><h2>El pago no se completó</h2><p>No te cobramos nada. Podés intentar de nuevo con otro medio de pago.</p><p><a class="btn-sec" href="/">Intentar de nuevo</a></p>`,
     revisar_pago: `<div class="icono-grande">🔎</div><h2>Estamos revisando tu pago</h2><p>Acercate al mostrador con tu comprobante, por favor.</p>`,
+    a_cobrar: `<div class="icono-grande ok">📝</div><p>¡Pedido recibido! Tu número es</p><div class="numero">#${num}</div><h2>ya está en cocina 👩‍🍳</h2><p>💵 El mozo te cobra en la mesa: <b>${fmt(p.total)}</b></p>${barra}`,
     pagado: `<div class="icono-grande ok">✅</div><p>¡Pago confirmado! Tu pedido</p><div class="numero">#${num}</div><h2>ya está en cocina 👩‍🍳</h2>${barra}`,
     en_preparacion: `<div class="icono-grande ok">👩‍🍳</div><p>Pedido</p><div class="numero">#${num}</div><h2>Lo estamos preparando</h2>${barra}`,
     listo: `<div class="icono-grande ok">🎉</div><p>Pedido</p><div class="numero">#${num}</div><h2>${takeaway ? '¡Listo! Pasá a retirarlo por el mostrador' : '¡Listo! Ya va a tu mesa'}</h2>${barra}`,
@@ -67,7 +68,7 @@ function pintar(p) {
       <div class="linea total"><span>Total</span><span>${fmt(p.total)}</span></div></div>
       ${p.notas ? `<p>📝 ${esc(p.notas)}</p>` : ''}`;
   }
-  if (['pagado', 'en_preparacion', 'listo', 'entregado'].includes(p.estado)) {
+  if (['a_cobrar', 'pagado', 'en_preparacion', 'listo', 'entregado'].includes(p.estado)) {
     try { localStorage.removeItem('gc_carrito'); } catch {}
   }
 }

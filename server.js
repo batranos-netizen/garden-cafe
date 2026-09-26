@@ -20,13 +20,24 @@ try {
 } catch {}
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+// Si no se configura BASE_URL, se usa la IP de esta PC en la red WiFi (para que los QR funcionen desde el celular)
+function ipLocal() {
+  const os = require('os');
+  for (const lista of Object.values(os.networkInterfaces())) {
+    for (const i of lista || []) {
+      if (i.family === 'IPv4' && !i.internal && /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))/.test(i.address)) return i.address;
+    }
+  }
+  return 'localhost';
+}
+const BASE_URL = (process.env.BASE_URL || `http://${ipLocal()}:${PORT}`).replace(/\/$/, '');
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET || '';
 const MP_API = (process.env.MP_API_BASE || 'https://api.mercadopago.com').replace(/\/$/, '');
 const MP_MOCK = process.env.MP_MOCK === '1' || !MP_ACCESS_TOKEN; // modo prueba sin Mercado Pago real
 const PANEL_PASSWORD = process.env.PANEL_PASSWORD || 'garden1234';
 const CANT_MESAS = parseInt(process.env.CANT_MESAS || '12', 10);
+const COBRO_EN_MESA = process.env.COBRO_EN_MESA !== '0'; // permitir pagar en la mesa (efectivo) — poner 0 para desactivar
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update(PANEL_PASSWORD + 'garden').digest('hex');
 
@@ -125,13 +136,15 @@ function leerJSON(req) {
 
 // Carta pública
 app.get('/api/menu', (req, res) => res.json(loadMenu()));
-app.get('/api/config', (req, res) => res.json({ mock: MP_MOCK, mesas: CANT_MESAS }));
+app.get('/api/config', (req, res) => res.json({ mock: MP_MOCK, mesas: CANT_MESAS, cobro_en_mesa: COBRO_EN_MESA }));
 
 // ---------- Crear pedido ----------
 app.post('/api/pedidos', async (req, res) => {
   try {
     const menu = loadMenu();
     const { items, modo, mesa, nombre, telefono, hora_retiro, notas } = req.body || {};
+    const metodo = req.body?.metodo_pago === 'mesa' ? 'mesa' : 'mp';
+    if (metodo === 'mesa' && (!COBRO_EN_MESA || modo !== 'mesa')) return res.status(400).json({ error: 'El pago en la mesa solo está disponible para pedidos en el local.' });
 
     if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'El pedido está vacío.' });
     if (!['mesa', 'takeaway'].includes(modo)) return res.status(400).json({ error: 'Elegí mesa o take away.' });
@@ -173,8 +186,21 @@ app.post('/api/pedidos', async (req, res) => {
       creado: new Date().toISOString(),
       pagado: null,
       pago_id: null,
+      metodo_pago: metodo,
+      cobrado: false,
     };
     db.pedidos[id] = pedido;
+
+    // Pago en la mesa (efectivo / con el mozo): va directo a cocina marcado "A COBRAR"
+    if (metodo === 'mesa') {
+      pedido.estado = 'a_cobrar';
+      pedido.numero = siguienteNumero();
+      pedido.pagado = new Date().toISOString(); // hora de ingreso a cocina
+      save();
+      console.log(`💵 Pedido #${pedido.numero} a cobrar en mesa ${pedido.mesa} (${fmt(pedido.total)})`);
+      despacharPedido(pedido);
+      return res.json({ id, checkout_url: `${BASE_URL}/estado?pedido=${id}`, total });
+    }
     save();
 
     let checkoutUrl;
@@ -327,7 +353,7 @@ app.get('/api/pedidos/:id', (req, res) => {
 });
 
 function publicoCliente(p) {
-  return { id: p.id, numero: p.numero, estado: p.estado, modo: p.modo, mesa: p.mesa, nombre: p.nombre, hora_retiro: p.hora_retiro, items: p.items, total: p.total, notas: p.notas };
+  return { id: p.id, numero: p.numero, estado: p.estado, metodo_pago: p.metodo_pago || 'mp', cobrado: !!p.cobrado, modo: p.modo, mesa: p.mesa, nombre: p.nombre, hora_retiro: p.hora_retiro, items: p.items, total: p.total, notas: p.notas };
 }
 function publicoPanel(p) { return { ...publicoCliente(p), telefono: p.telefono, creado: p.creado, pagado: p.pagado, pago_id: p.pago_id }; }
 
@@ -350,7 +376,7 @@ function despacharPedido(pedido) {
 function textoPedido(p) {
   const destino = p.modo === 'mesa' ? `🍽️ MESA ${p.mesa}` : `🛍️ TAKE AWAY · retira ${p.hora_retiro}`;
   const lineas = p.items.map((l) => `• ${l.qty} x ${l.nombre}`).join('\n');
-  return `☕ *Garden Café · Pedido #${String(p.numero).padStart(3, '0')}* (PAGADO ✅)\n${destino}\n👤 ${p.nombre}${p.telefono ? ' · ' + p.telefono : ''}\n\n${lineas}${p.notas ? `\n\n📝 ${p.notas}` : ''}\n\nTotal: ${fmt(p.total)} · MP #${p.pago_id}`;
+  return `☕ *Garden Café · Pedido #${String(p.numero).padStart(3, '0')}* ${p.metodo_pago === 'mesa' ? '(💵 COBRAR EN MESA)' : '(PAGADO ✅)'}\n${destino}\n👤 ${p.nombre}${p.telefono ? ' · ' + p.telefono : ''}\n\n${lineas}${p.notas ? `\n\n📝 ${p.notas}` : ''}\n\nTotal: ${fmt(p.total)}${p.metodo_pago === 'mesa' ? ' · cobrar en la mesa' : ' · MP #' + p.pago_id}`;
 }
 
 async function enviarWhatsApp(p) {
@@ -396,7 +422,7 @@ app.post('/api/panel/login', (req, res) => {
 });
 app.get('/api/panel/sesion', (req, res) => res.json({ ok: autorizado(req) }));
 
-const ESTADOS_COCINA = ['pagado', 'en_preparacion', 'listo', 'entregado', 'revisar_pago'];
+const ESTADOS_COCINA = ['a_cobrar', 'pagado', 'en_preparacion', 'listo', 'entregado', 'revisar_pago'];
 app.get('/api/panel/pedidos', soloPanel, (req, res) => {
   const hace24 = Date.now() - 24 * 3600 * 1000;
   const lista = Object.values(db.pedidos)
@@ -415,8 +441,20 @@ app.post('/api/panel/pedidos/:id/estado', soloPanel, (req, res) => {
     // El encargado verificó el pago a mano en Mercado Pago y lo aprueba
     p.numero = siguienteNumero();
     p.pagado = new Date().toISOString();
-  } else if (!['pagado', 'en_preparacion', 'listo', 'entregado'].includes(p.estado)) return res.status(400).json({ error: 'El pedido no está pagado' });
+  } else if (!['a_cobrar', 'pagado', 'en_preparacion', 'listo', 'entregado'].includes(p.estado)) return res.status(400).json({ error: 'El pedido no está pagado' });
   p.estado = estado;
+  save();
+  emitir('pedido', publicoPanel(p));
+  res.json(publicoPanel(p));
+});
+
+// Marcar un pedido de la mesa como cobrado (efectivo / tarjeta con el mozo)
+app.post('/api/panel/pedidos/:id/cobrado', soloPanel, (req, res) => {
+  const p = db.pedidos[req.params.id];
+  if (!p) return res.status(404).json({ error: 'No existe' });
+  if (p.metodo_pago !== 'mesa') return res.status(400).json({ error: 'Este pedido se pagó con Mercado Pago' });
+  p.cobrado = true;
+  p.cobrado_en = new Date().toISOString();
   save();
   emitir('pedido', publicoPanel(p));
   res.json(publicoPanel(p));
@@ -428,7 +466,8 @@ app.get('/api/panel/resumen', soloPanel, (req, res) => {
   const pagados = Object.values(db.pedidos).filter((p) => p.pagado && new Date(p.pagado).toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }) === hoy);
   res.json({
     pedidos: pagados.length,
-    total: pagados.reduce((a, p) => a + p.total, 0),
+    total: pagados.filter((p) => p.metodo_pago !== 'mesa' || p.cobrado).reduce((a, p) => a + p.total, 0),
+    por_cobrar: pagados.filter((p) => p.metodo_pago === 'mesa' && !p.cobrado).reduce((a, p) => a + p.total, 0),
     mesa: pagados.filter((p) => p.modo === 'mesa').length,
     takeaway: pagados.filter((p) => p.modo === 'takeaway').length,
   });

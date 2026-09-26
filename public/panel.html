@@ -26,6 +26,8 @@
     .ped { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.06); border-left: 6px solid var(--hoja); }
     .ped.takeaway { border-left-color: var(--acento); }
     .ped.nuevo { animation: destello 1s ease 3; }
+    .ped .cobrar { display: inline-block; background: #fff1c2; color: #7a4b00; border: 1.5px solid #e0a800; border-radius: 8px; padding: 4px 10px; font-weight: 700; font-size: 14px; margin: 2px 0 8px; }
+    .ped .cobrado { display: inline-block; background: #dcefe2; color: #1f5c38; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 13px; margin: 2px 0 8px; }
     .ped.alerta { border-left-color: #b3261e; background: #fff4f2; }
     @keyframes destello { 50% { box-shadow: 0 0 0 4px #ffd166; } }
     .ped .cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -67,6 +69,7 @@
       <div class="kpi"><b id="k-ped">0</b>pedidos hoy</div>
       <div class="kpi"><b id="k-total">$0</b>cobrado hoy</div>
       <div class="kpi"><b id="k-mix">0 / 0</b>mesa / take away</div>
+      <div class="kpi"><b id="k-cobrar">$0</b>por cobrar en mesas</div>
       <div class="der">
         <label><input type="checkbox" id="auto-print"> Imprimir comanda automáticamente</label>
         <a href="#" id="btn-sonido">🔔 Probar sonido</a>
@@ -139,6 +142,7 @@ async function resumen() {
   document.getElementById('k-ped').textContent = r.pedidos;
   document.getElementById('k-total').textContent = fmt(r.total);
   document.getElementById('k-mix').textContent = `${r.mesa} / ${r.takeaway}`;
+  document.getElementById('k-cobrar').textContent = fmt(r.por_cobrar || 0);
 }
 
 // ---------- Tiempo real ----------
@@ -151,10 +155,10 @@ function conectar() {
     const p = JSON.parse(ev.data);
     const antes = pedidos.get(p.id);
     pedidos.set(p.id, p);
-    if (!antes && (p.estado === 'pagado' || p.estado === 'revisar_pago')) {
+    if (!antes && ['pagado', 'a_cobrar', 'revisar_pago'].includes(p.estado)) {
       recienLlegados.add(p.id);
       sonar();
-      if (p.estado === 'pagado' && autoPrint.checked) imprimir(p.id);
+      if (['pagado', 'a_cobrar'].includes(p.estado) && autoPrint.checked) imprimir(p.id);
       setTimeout(() => recienLlegados.delete(p.id), 4000);
       resumen();
     }
@@ -172,6 +176,7 @@ function tarjeta(p) {
   const alerta = p.estado === 'revisar_pago';
   const acciones = {
     pagado: `<button class="sec" data-print>🖨️</button><button data-e="en_preparacion">Preparar</button>`,
+    a_cobrar: `<button class="sec" data-print>🖨️</button><button data-e="en_preparacion">Preparar</button>`,
     en_preparacion: `<button class="sec" data-print>🖨️</button><button data-e="listo">Listo ✓</button>`,
     listo: `<button data-e="entregado">${ta ? 'Retirado' : 'Entregado'}</button>`,
     revisar_pago: `<button data-e="en_preparacion" title="Solo si verificaste el pago ${esc(p.pago_id)} en tu cuenta de Mercado Pago">Lo verifiqué, preparar</button>`,
@@ -179,6 +184,7 @@ function tarjeta(p) {
   return `<div class="ped ${ta ? 'takeaway' : ''} ${alerta ? 'alerta' : ''} ${recienLlegados.has(p.id) ? 'nuevo' : ''}" data-id="${p.id}">
     <div class="cab"><span class="dest">${ta ? '🛍️ TAKE AWAY' : '🍽️ MESA ' + p.mesa}</span><span class="num">${p.numero ? '#' + String(p.numero).padStart(3, '0') : '⚠️'}</span></div>
     <div class="quien">${esc(p.nombre)}${ta ? ` · 📱 ${esc(p.telefono)} · ⏰ ${esc(p.hora_retiro)}` : ''}${alerta ? ` · ⚠️ El monto pagado no coincide: revisá el pago ${esc(p.pago_id)} en Mercado Pago` : ''}</div>
+    ${p.metodo_pago === 'mesa' ? (p.cobrado ? `<div class="cobrado">✅ Cobrado en mesa</div>` : `<div class="cobrar">💵 COBRAR EN MESA: ${fmt(p.total)} <button class="sec" data-cobrado style="margin-left:6px;padding:6px 10px">Cobrado ✓</button></div>`) : ''}
     <ul>${p.items.map((l) => `<li><b>${l.qty}×</b> ${esc(l.nombre)}</li>`).join('')}</ul>
     ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ''}
     <div class="pie"><span class="tiempo">${hace(p.pagado || p.creado)} · ${fmt(p.total)}</span><span class="acc">${acciones}</span></div>
@@ -187,7 +193,7 @@ function tarjeta(p) {
 function render() {
   const todos = [...pedidos.values()];
   const grupos = {
-    nuevos: todos.filter((p) => p.estado === 'pagado' || p.estado === 'revisar_pago'),
+    nuevos: todos.filter((p) => ['pagado', 'a_cobrar', 'revisar_pago'].includes(p.estado)),
     prep: todos.filter((p) => p.estado === 'en_preparacion'),
     listos: todos.filter((p) => p.estado === 'listo'),
   };
@@ -201,6 +207,12 @@ document.body.addEventListener('click', async (e) => {
   if (!card) return;
   const id = card.dataset.id;
   if (e.target.matches('[data-print]')) return imprimir(id);
+  if (e.target.matches('[data-cobrado]')) {
+    e.target.disabled = true;
+    const rc = await fetch(`/api/panel/pedidos/${id}/cobrado`, { method: 'POST' });
+    if (rc.ok) { pedidos.set(id, await rc.json()); render(); resumen(); } else e.target.disabled = false;
+    return;
+  }
   const estado = e.target.dataset.e;
   if (!estado) return;
   e.target.disabled = true;
@@ -221,7 +233,7 @@ function imprimir(id) {
     hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; } td { vertical-align: top; padding: 2px 0; }
     .dest { font-size: 20px; font-weight: bold; border: 2px solid #000; padding: 4px; margin: 6px 0; }
   </style></head><body>
-    <div class="c"><h1>GARDEN CAFÉ</h1>COMANDA · PAGADO MP</div><hr>
+    <div class="c"><h1>GARDEN CAFÉ</h1>COMANDA · ${p.metodo_pago === 'mesa' ? 'COBRAR EN MESA' : 'PAGADO MP'}</div><hr>
     <div class="c big">#${String(p.numero).padStart(3, '0')}</div>
     <div class="c dest">${ta ? 'TAKE AWAY' : 'MESA ' + p.mesa}</div>
     <div>Cliente: ${esc(p.nombre)}</div>
@@ -229,7 +241,7 @@ function imprimir(id) {
     <div>Hora: ${hora}</div><hr>
     <table style="width:100%">${p.items.map((l) => `<tr><td style="width:12mm"><b>${l.qty} x</b></td><td>${esc(l.nombre)}</td></tr>`).join('')}</table>
     ${p.notas ? `<hr><b>NOTA:</b> ${esc(p.notas)}` : ''}
-    <hr><div>Total: ${fmt(p.total)}</div><div>Pago MP: ${esc(p.pago_id)}</div><br><br>
+    <hr><div>Total: ${fmt(p.total)}</div>${p.metodo_pago === 'mesa' ? '<div><b>*** COBRAR EN MESA ***</b></div>' : `<div>Pago MP: ${esc(p.pago_id)}</div>`}<br><br>
   </body></html>`;
   const f = document.getElementById('ticket-frame');
   f.onload = () => { f.onload = null; f.contentWindow.focus(); f.contentWindow.print(); };
